@@ -1,0 +1,1172 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>MotoFuel — Tracker Rifornimenti</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=JetBrains+Mono:wght@400;600;700&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet" />
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+  <style>
+    /* ===== CSS VARIABLES ===== */
+    :root {
+      --bg:         #0d0d0f;
+      --bg2:        #141418;
+      --bg3:        #1c1c22;
+      --border:     #2a2a35;
+      --accent:     #f5a623;
+      --accent2:    #e8320a;
+      --text:       #e8e6df;
+      --muted:      #6b6a72;
+      --success:    #3ecf6e;
+      --mono:       'JetBrains Mono', monospace;
+      --display:    'Bebas Neue', cursive;
+      --body:       'DM Sans', sans-serif;
+      --radius:     12px;
+      --radius-lg:  20px;
+      --shadow:     0 8px 32px rgba(0,0,0,0.5);
+      --glow:       0 0 20px rgba(245,166,35,0.15);
+    }
+
+    /* ===== RESET ===== */
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    html { scroll-behavior: smooth; }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: var(--body);
+      min-height: 100vh;
+      padding-bottom: 100px;
+      overflow-x: hidden;
+    }
+
+    /* ===== NOISE TEXTURE OVERLAY ===== */
+    body::before {
+      content: '';
+      position: fixed; inset: 0;
+      background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.03'/%3E%3C/svg%3E");
+      pointer-events: none;
+      z-index: 0;
+      opacity: 0.4;
+    }
+
+    /* ===== HEADER ===== */
+    .header {
+      padding: 24px 20px 16px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      border-bottom: 1px solid var(--border);
+      position: sticky; top: 0;
+      background: rgba(13,13,15,0.92);
+      backdrop-filter: blur(12px);
+      z-index: 100;
+    }
+
+    .logo {
+      display: flex;
+      align-items: baseline;
+      gap: 6px;
+    }
+
+    .logo-main {
+      font-family: var(--display);
+      font-size: 28px;
+      letter-spacing: 2px;
+      color: var(--accent);
+      line-height: 1;
+    }
+
+    .logo-sub {
+      font-family: var(--mono);
+      font-size: 10px;
+      color: var(--muted);
+      letter-spacing: 3px;
+      text-transform: uppercase;
+    }
+
+    .header-actions {
+      display: flex;
+      gap: 10px;
+    }
+
+    /* ===== BUTTONS ===== */
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 10px 18px;
+      border-radius: var(--radius);
+      font-family: var(--mono);
+      font-size: 12px;
+      font-weight: 600;
+      letter-spacing: 0.5px;
+      border: none;
+      cursor: pointer;
+      transition: all 0.2s;
+      text-transform: uppercase;
+    }
+
+    .btn-primary {
+      background: var(--accent);
+      color: #000;
+    }
+    .btn-primary:hover { background: #ffc04a; transform: translateY(-1px); box-shadow: 0 4px 16px rgba(245,166,35,0.4); }
+    .btn-primary:active { transform: translateY(0); }
+
+    .btn-ghost {
+      background: var(--bg3);
+      color: var(--muted);
+      border: 1px solid var(--border);
+    }
+    .btn-ghost:hover { color: var(--text); border-color: var(--muted); }
+
+    .btn-danger {
+      background: transparent;
+      color: var(--accent2);
+      border: 1px solid rgba(232,50,10,0.3);
+      padding: 6px 10px;
+      font-size: 11px;
+    }
+    .btn-danger:hover { background: rgba(232,50,10,0.15); border-color: var(--accent2); }
+
+    .btn-sm { padding: 7px 12px; font-size: 11px; }
+
+    /* ===== NAV TABS ===== */
+    .nav {
+      display: flex;
+      background: var(--bg2);
+      padding: 6px;
+      margin: 20px;
+      border-radius: var(--radius-lg);
+      gap: 4px;
+      border: 1px solid var(--border);
+    }
+
+    .nav-tab {
+      flex: 1;
+      padding: 12px 8px;
+      border-radius: var(--radius);
+      border: none;
+      background: transparent;
+      color: var(--muted);
+      font-family: var(--mono);
+      font-size: 11px;
+      font-weight: 600;
+      letter-spacing: 1px;
+      text-transform: uppercase;
+      cursor: pointer;
+      transition: all 0.2s;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+    }
+
+    .nav-tab.active {
+      background: var(--bg3);
+      color: var(--accent);
+      border: 1px solid var(--border);
+      box-shadow: 0 2px 8px rgba(0,0,0,0.4);
+    }
+
+    .nav-tab:not(.active):hover { color: var(--text); }
+
+    /* ===== SECTIONS ===== */
+    .section { display: none; padding: 0 20px; animation: fadeIn 0.25s ease; }
+    .section.active { display: block; }
+
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(8px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+
+    /* ===== FORM ===== */
+    .form-card {
+      background: var(--bg2);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-lg);
+      padding: 24px;
+      margin-bottom: 16px;
+    }
+
+    .form-title {
+      font-family: var(--display);
+      font-size: 22px;
+      letter-spacing: 2px;
+      color: var(--accent);
+      margin-bottom: 20px;
+    }
+
+    .form-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 14px;
+      margin-bottom: 14px;
+    }
+
+    .form-group {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+
+    .form-group.full { grid-column: 1 / -1; }
+
+    label {
+      font-family: var(--mono);
+      font-size: 10px;
+      font-weight: 600;
+      letter-spacing: 2px;
+      text-transform: uppercase;
+      color: var(--muted);
+    }
+
+    input[type="number"],
+    input[type="date"],
+    input[type="text"],
+    textarea {
+      width: 100%;
+      background: var(--bg3);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      color: var(--text);
+      font-family: var(--mono);
+      font-size: 15px;
+      padding: 12px 14px;
+      outline: none;
+      transition: border-color 0.2s, box-shadow 0.2s;
+      -moz-appearance: textfield;
+    }
+
+    input::-webkit-outer-spin-button,
+    input::-webkit-inner-spin-button { -webkit-appearance: none; }
+
+    input:focus {
+      border-color: var(--accent);
+      box-shadow: 0 0 0 3px rgba(245,166,35,0.12);
+    }
+
+    input.error { border-color: var(--accent2) !important; }
+
+    .error-msg {
+      font-family: var(--mono);
+      font-size: 10px;
+      color: var(--accent2);
+      display: none;
+    }
+
+    .error-msg.show { display: block; }
+
+    .input-unit {
+      position: relative;
+    }
+
+    .input-unit input { padding-right: 36px; }
+
+    .unit-label {
+      position: absolute;
+      right: 12px;
+      top: 50%;
+      transform: translateY(-50%);
+      font-family: var(--mono);
+      font-size: 11px;
+      color: var(--muted);
+      pointer-events: none;
+    }
+
+    .form-submit {
+      width: 100%;
+      padding: 16px;
+      font-size: 14px;
+      letter-spacing: 2px;
+      border-radius: var(--radius);
+      margin-top: 4px;
+    }
+
+    /* ===== TOAST ===== */
+    .toast {
+      position: fixed;
+      bottom: 110px;
+      left: 50%;
+      transform: translateX(-50%) translateY(20px);
+      background: var(--success);
+      color: #000;
+      font-family: var(--mono);
+      font-size: 12px;
+      font-weight: 600;
+      padding: 10px 20px;
+      border-radius: 100px;
+      opacity: 0;
+      transition: all 0.3s;
+      z-index: 999;
+      white-space: nowrap;
+    }
+
+    .toast.show {
+      opacity: 1;
+      transform: translateX(-50%) translateY(0);
+    }
+
+    .toast.error-toast {
+      background: var(--accent2);
+      color: #fff;
+    }
+
+    /* ===== DASHBOARD STATS ===== */
+    .stats-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+      margin-bottom: 16px;
+    }
+
+    .stat-card {
+      background: var(--bg2);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-lg);
+      padding: 20px 18px;
+      position: relative;
+      overflow: hidden;
+      transition: border-color 0.2s;
+    }
+
+    .stat-card:hover { border-color: var(--muted); }
+
+    .stat-card.accent-card {
+      border-color: rgba(245,166,35,0.3);
+      background: linear-gradient(135deg, var(--bg2) 60%, rgba(245,166,35,0.05));
+    }
+
+    .stat-card.accent-card::before {
+      content: '';
+      position: absolute;
+      top: 0; left: 0; right: 0;
+      height: 2px;
+      background: var(--accent);
+    }
+
+    .stat-card.full { grid-column: 1 / -1; }
+
+    .stat-label {
+      font-family: var(--mono);
+      font-size: 9px;
+      font-weight: 600;
+      letter-spacing: 2.5px;
+      text-transform: uppercase;
+      color: var(--muted);
+      margin-bottom: 8px;
+    }
+
+    .stat-value {
+      font-family: var(--display);
+      font-size: 36px;
+      letter-spacing: 1px;
+      color: var(--text);
+      line-height: 1;
+    }
+
+    .stat-value.accent { color: var(--accent); }
+
+    .stat-unit {
+      font-family: var(--mono);
+      font-size: 12px;
+      color: var(--muted);
+      margin-top: 4px;
+    }
+
+    .stat-icon {
+      position: absolute;
+      top: 16px; right: 16px;
+      font-size: 22px;
+      opacity: 0.3;
+    }
+
+    /* ===== CHART ===== */
+    .chart-card {
+      background: var(--bg2);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-lg);
+      padding: 20px;
+      margin-bottom: 16px;
+    }
+
+    .chart-title {
+      font-family: var(--mono);
+      font-size: 10px;
+      font-weight: 600;
+      letter-spacing: 2.5px;
+      text-transform: uppercase;
+      color: var(--muted);
+      margin-bottom: 16px;
+    }
+
+    .chart-wrap { position: relative; height: 180px; }
+
+    /* ===== HISTORY LIST ===== */
+    .history-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 14px;
+    }
+
+    .history-title {
+      font-family: var(--display);
+      font-size: 22px;
+      letter-spacing: 2px;
+      color: var(--text);
+    }
+
+    .history-count {
+      font-family: var(--mono);
+      font-size: 11px;
+      color: var(--muted);
+      background: var(--bg3);
+      padding: 4px 10px;
+      border-radius: 100px;
+      border: 1px solid var(--border);
+    }
+
+    .history-list { display: flex; flex-direction: column; gap: 10px; }
+
+    .entry-card {
+      background: var(--bg2);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-lg);
+      padding: 16px 18px;
+      display: grid;
+      grid-template-columns: auto 1fr auto;
+      gap: 14px;
+      align-items: center;
+      transition: border-color 0.2s, transform 0.2s;
+      animation: slideIn 0.3s ease;
+    }
+
+    @keyframes slideIn {
+      from { opacity: 0; transform: translateX(-12px); }
+      to   { opacity: 1; transform: translateX(0); }
+    }
+
+    .entry-card:hover { border-color: var(--muted); transform: translateX(3px); }
+
+    .entry-date-block {
+      text-align: center;
+      min-width: 44px;
+    }
+
+    .entry-day {
+      font-family: var(--display);
+      font-size: 28px;
+      color: var(--accent);
+      line-height: 1;
+    }
+
+    .entry-month {
+      font-family: var(--mono);
+      font-size: 9px;
+      font-weight: 600;
+      letter-spacing: 1.5px;
+      text-transform: uppercase;
+      color: var(--muted);
+    }
+
+    .entry-body { min-width: 0; }
+
+    .entry-km {
+      font-family: var(--mono);
+      font-size: 15px;
+      font-weight: 700;
+      color: var(--text);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .entry-meta {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-top: 5px;
+    }
+
+    .chip {
+      font-family: var(--mono);
+      font-size: 10px;
+      color: var(--muted);
+      background: var(--bg3);
+      padding: 3px 8px;
+      border-radius: 6px;
+      border: 1px solid var(--border);
+      white-space: nowrap;
+    }
+
+    .chip.highlight { color: var(--accent); border-color: rgba(245,166,35,0.3); }
+
+    .entry-actions { display: flex; align-items: center; }
+
+    /* ===== EMPTY STATE ===== */
+    .empty-state {
+      text-align: center;
+      padding: 60px 20px;
+      display: none;
+    }
+
+    .empty-state.show { display: block; }
+
+    .empty-icon {
+      font-size: 52px;
+      margin-bottom: 16px;
+      opacity: 0.4;
+    }
+
+    .empty-text {
+      font-family: var(--mono);
+      font-size: 13px;
+      color: var(--muted);
+      line-height: 1.8;
+    }
+
+    /* ===== RESET SECTION ===== */
+    .danger-zone {
+      background: rgba(232,50,10,0.05);
+      border: 1px solid rgba(232,50,10,0.2);
+      border-radius: var(--radius-lg);
+      padding: 20px;
+      margin-top: 16px;
+    }
+
+    .danger-title {
+      font-family: var(--mono);
+      font-size: 10px;
+      font-weight: 600;
+      letter-spacing: 2px;
+      text-transform: uppercase;
+      color: var(--accent2);
+      margin-bottom: 8px;
+    }
+
+    .danger-text {
+      font-size: 12px;
+      color: var(--muted);
+      margin-bottom: 14px;
+      line-height: 1.6;
+    }
+
+    /* ===== MODAL ===== */
+    .modal-overlay {
+      display: none;
+      position: fixed; inset: 0;
+      background: rgba(0,0,0,0.7);
+      backdrop-filter: blur(4px);
+      z-index: 200;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+    }
+
+    .modal-overlay.show { display: flex; }
+
+    .modal {
+      background: var(--bg2);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-lg);
+      padding: 28px 24px;
+      max-width: 340px;
+      width: 100%;
+      animation: modalIn 0.25s ease;
+    }
+
+    @keyframes modalIn {
+      from { opacity: 0; transform: scale(0.9); }
+      to   { opacity: 1; transform: scale(1); }
+    }
+
+    .modal-title {
+      font-family: var(--display);
+      font-size: 22px;
+      letter-spacing: 2px;
+      color: var(--accent2);
+      margin-bottom: 10px;
+    }
+
+    .modal-text {
+      font-size: 13px;
+      color: var(--muted);
+      line-height: 1.7;
+      margin-bottom: 24px;
+    }
+
+    .modal-actions { display: flex; gap: 10px; }
+
+    .modal-actions .btn { flex: 1; justify-content: center; }
+
+    /* ===== SCROLLBAR ===== */
+    ::-webkit-scrollbar { width: 4px; }
+    ::-webkit-scrollbar-track { background: var(--bg); }
+    ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 4px; }
+
+    /* ===== DIVIDER ===== */
+    .divider {
+      height: 1px;
+      background: var(--border);
+      margin: 20px 0;
+    }
+
+    /* ===== RESPONSIVE ===== */
+    @media (max-width: 380px) {
+      .form-grid { grid-template-columns: 1fr; }
+      .stats-grid { grid-template-columns: 1fr; }
+      .stat-card.full { grid-column: auto; }
+      .entry-card { grid-template-columns: auto 1fr auto; gap: 10px; }
+      .stat-value { font-size: 28px; }
+    }
+
+    @media (min-width: 600px) {
+      .header, .nav, .section { max-width: 540px; margin-left: auto; margin-right: auto; }
+      .nav { margin-left: auto; margin-right: auto; }
+      .section { padding-left: 0; padding-right: 0; }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- HEADER -->
+  <header class="header">
+    <div class="logo">
+      <span class="logo-main">⛽ MotoFuel</span>
+      <span class="logo-sub">Tracker</span>
+    </div>
+    <div class="header-actions">
+      <button class="btn btn-ghost btn-sm" onclick="openModal('modal-reset')">🗑 Reset</button>
+    </div>
+  </header>
+
+  <!-- NAV -->
+  <nav class="nav">
+    <button class="nav-tab active" onclick="switchTab('add')" id="tab-add">
+      ➕ Aggiungi
+    </button>
+    <button class="nav-tab" onclick="switchTab('stats')" id="tab-stats">
+      📊 Stats
+    </button>
+    <button class="nav-tab" onclick="switchTab('history')" id="tab-history">
+      📋 Storico
+    </button>
+  </nav>
+
+  <!-- ===== TAB: AGGIUNGI ===== -->
+  <section class="section active" id="section-add">
+    <div class="form-card">
+      <div class="form-title">Nuovo Rifornimento</div>
+
+      <div class="form-grid">
+        <!-- KM attuali -->
+        <div class="form-group">
+          <label for="inp-km">Km Attuali</label>
+          <div class="input-unit">
+            <input type="number" id="inp-km" placeholder="es. 12500" min="0" step="1" />
+            <span class="unit-label">km</span>
+          </div>
+          <span class="error-msg" id="err-km">Valore non valido</span>
+        </div>
+
+        <!-- LITRI -->
+        <div class="form-group">
+          <label for="inp-litri">Litri</label>
+          <div class="input-unit">
+            <input type="number" id="inp-litri" placeholder="es. 12.5" min="0.1" step="0.01" />
+            <span class="unit-label">L</span>
+          </div>
+          <span class="error-msg" id="err-litri">Valore non valido</span>
+        </div>
+
+        <!-- PREZZO -->
+        <div class="form-group">
+          <label for="inp-prezzo">Prezzo Totale</label>
+          <div class="input-unit">
+            <input type="number" id="inp-prezzo" placeholder="es. 20.50" min="0.01" step="0.01" />
+            <span class="unit-label">€</span>
+          </div>
+          <span class="error-msg" id="err-prezzo">Valore non valido</span>
+        </div>
+
+        <!-- DATA -->
+        <div class="form-group">
+          <label for="inp-data">Data</label>
+          <input type="date" id="inp-data" />
+        </div>
+      </div>
+
+      <button class="btn btn-primary form-submit" onclick="addRifornimento()">
+        Salva Rifornimento ⛽
+      </button>
+    </div>
+
+    <!-- ULTIMA VOCE QUICK VIEW -->
+    <div id="quick-last"></div>
+  </section>
+
+  <!-- ===== TAB: STATS ===== -->
+  <section class="section" id="section-stats">
+    <div class="stats-grid">
+      <div class="stat-card accent-card">
+        <div class="stat-icon">⛽</div>
+        <div class="stat-label">Ultimo consumo</div>
+        <div class="stat-value accent" id="stat-last-consumo">—</div>
+        <div class="stat-unit">km/L</div>
+      </div>
+
+      <div class="stat-card">
+        <div class="stat-icon">📊</div>
+        <div class="stat-label">Media generale</div>
+        <div class="stat-value" id="stat-media">—</div>
+        <div class="stat-unit">km/L</div>
+      </div>
+
+      <div class="stat-card">
+        <div class="stat-icon">💶</div>
+        <div class="stat-label">Costo per km</div>
+        <div class="stat-value" id="stat-cost-km">—</div>
+        <div class="stat-unit">€/km</div>
+      </div>
+
+      <div class="stat-card">
+        <div class="stat-icon">💧</div>
+        <div class="stat-label">Totale litri</div>
+        <div class="stat-value" id="stat-tot-litri">—</div>
+        <div class="stat-unit">L</div>
+      </div>
+
+      <div class="stat-card full">
+        <div class="stat-icon">💰</div>
+        <div class="stat-label">Totale Speso</div>
+        <div class="stat-value accent" id="stat-tot-speso">€ —</div>
+        <div class="stat-unit" id="stat-rifornimenti">0 rifornimenti registrati</div>
+      </div>
+    </div>
+
+    <!-- CHART -->
+    <div class="chart-card">
+      <div class="chart-title">Consumo nel tempo (km/L)</div>
+      <div class="chart-wrap">
+        <canvas id="chart-consumo"></canvas>
+      </div>
+    </div>
+
+    <div class="chart-card">
+      <div class="chart-title">Prezzo al litro nel tempo (€/L)</div>
+      <div class="chart-wrap">
+        <canvas id="chart-prezzoL"></canvas>
+      </div>
+    </div>
+
+    <div class="empty-state" id="stats-empty">
+      <div class="empty-icon">📊</div>
+      <div class="empty-text">Nessun dato disponibile.<br/>Aggiungi almeno un rifornimento.</div>
+    </div>
+  </section>
+
+  <!-- ===== TAB: STORICO ===== -->
+  <section class="section" id="section-history">
+    <div class="history-header">
+      <div class="history-title">Storico</div>
+      <div class="history-count" id="history-count">0 voci</div>
+    </div>
+
+    <div class="history-list" id="history-list"></div>
+
+    <div class="empty-state" id="history-empty">
+      <div class="empty-icon">🏍️</div>
+      <div class="empty-text">Nessun rifornimento registrato.<br/>Inizia aggiungendo il primo!</div>
+    </div>
+  </section>
+
+  <!-- TOAST -->
+  <div class="toast" id="toast"></div>
+
+  <!-- MODAL RESET -->
+  <div class="modal-overlay" id="modal-reset">
+    <div class="modal">
+      <div class="modal-title">⚠️ Reset Dati</div>
+      <div class="modal-text">
+        Stai per eliminare <strong>tutti</strong> i rifornimenti salvati. Questa azione è irreversibile.
+      </div>
+      <div class="modal-actions">
+        <button class="btn btn-ghost" onclick="closeModal('modal-reset')">Annulla</button>
+        <button class="btn btn-primary" style="background:var(--accent2);color:#fff;" onclick="resetAll()">Elimina Tutto</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL DELETE SINGOLO -->
+  <div class="modal-overlay" id="modal-delete">
+    <div class="modal">
+      <div class="modal-title">Elimina voce?</div>
+      <div class="modal-text">
+        Vuoi eliminare questo rifornimento? L'operazione non può essere annullata.
+      </div>
+      <div class="modal-actions">
+        <button class="btn btn-ghost" onclick="closeModal('modal-delete')">Annulla</button>
+        <button class="btn btn-primary" style="background:var(--accent2);color:#fff;" onclick="confirmDelete()">Elimina</button>
+      </div>
+    </div>
+  </div>
+
+<script>
+/* ================================================
+   MOTOFUEL TRACKER — JavaScript
+================================================ */
+
+const LS_KEY = 'motofuel_v1';
+let deleteTarget = null;
+let chartConsumo = null;
+let chartPrezzoL = null;
+
+// ── DATA ──────────────────────────────────────
+function getData() {
+  try { return JSON.parse(localStorage.getItem(LS_KEY)) || []; }
+  catch { return []; }
+}
+
+function saveData(data) {
+  localStorage.setItem(LS_KEY, JSON.stringify(data));
+}
+
+// ── TABS ──────────────────────────────────────
+function switchTab(tab) {
+  document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
+  document.querySelectorAll('.nav-tab').forEach(t => t.classList.remove('active'));
+  document.getElementById('section-' + tab).classList.add('active');
+  document.getElementById('tab-' + tab).classList.add('active');
+
+  if (tab === 'stats')   renderStats();
+  if (tab === 'history') renderHistory();
+}
+
+// ── ADD RIFORNIMENTO ──────────────────────────
+function addRifornimento() {
+  const km     = parseFloat(document.getElementById('inp-km').value);
+  const litri  = parseFloat(document.getElementById('inp-litri').value);
+  const prezzo = parseFloat(document.getElementById('inp-prezzo').value);
+  const data   = document.getElementById('inp-data').value;
+
+  // Validation
+  let ok = true;
+  if (!km || km <= 0)     { showError('km',     true); ok = false; } else { showError('km',     false); }
+  if (!litri || litri <= 0) { showError('litri', true); ok = false; } else { showError('litri',  false); }
+  if (!prezzo || prezzo <= 0) { showError('prezzo', true); ok = false; } else { showError('prezzo', false); }
+
+  if (!ok) { showToast('Compila correttamente i campi ⚠️', true); return; }
+
+  const existing = getData();
+
+  // Warn if km < last km
+  if (existing.length > 0) {
+    const lastKm = Math.max(...existing.map(r => r.km));
+    if (km < lastKm) {
+      showToast(`⚠️ Km inferiori all'ultimo (${lastKm})`, true);
+      return;
+    }
+  }
+
+  const record = {
+    id:     Date.now(),
+    km:     km,
+    litri:  litri,
+    prezzo: prezzo,
+    data:   data || new Date().toISOString().split('T')[0]
+  };
+
+  existing.push(record);
+  // Sort ascending by date then km
+  existing.sort((a, b) => new Date(a.data) - new Date(b.data) || a.km - b.km);
+  saveData(existing);
+
+  // Reset form
+  ['inp-km','inp-litri','inp-prezzo'].forEach(id => document.getElementById(id).value = '');
+  setTodayDate();
+
+  showToast('Rifornimento salvato ✓');
+  renderQuickLast();
+}
+
+function showError(field, show) {
+  const inp = document.getElementById('inp-' + field);
+  const err = document.getElementById('err-' + field);
+  inp.classList.toggle('error', show);
+  err.classList.toggle('show', show);
+}
+
+// ── QUICK LAST (in Add tab) ───────────────────
+function renderQuickLast() {
+  const data = getData();
+  const el   = document.getElementById('quick-last');
+  if (data.length === 0) { el.innerHTML = ''; return; }
+  const last = data[data.length - 1];
+  const consumo = calcConsumo(data, data.length - 1);
+  el.innerHTML = `
+    <div class="form-card" style="border-color:rgba(245,166,35,0.25)">
+      <div class="stat-label" style="margin-bottom:12px">Ultimo rifornimento</div>
+      <div style="display:flex;gap:10px;flex-wrap:wrap">
+        <div class="chip highlight">📍 ${last.km.toLocaleString('it-IT')} km</div>
+        <div class="chip">⛽ ${last.litri} L</div>
+        <div class="chip">💶 €${last.prezzo.toFixed(2)}</div>
+        ${consumo !== null ? `<div class="chip highlight">🔥 ${consumo} km/L</div>` : ''}
+        <div class="chip">🗓 ${formatData(last.data)}</div>
+      </div>
+    </div>`;
+}
+
+// ── STATS ─────────────────────────────────────
+function renderStats() {
+  const data   = getData();
+  const empty  = document.getElementById('stats-empty');
+  const grid   = document.querySelector('.stats-grid');
+  const charts = document.querySelectorAll('.chart-card');
+
+  if (data.length === 0) {
+    empty.classList.add('show');
+    grid.style.display = 'none';
+    charts.forEach(c => c.style.display = 'none');
+    return;
+  }
+
+  empty.classList.remove('show');
+  grid.style.display = '';
+  charts.forEach(c => c.style.display = '');
+
+  const totSpeso  = data.reduce((s, r) => s + r.prezzo, 0);
+  const totLitri  = data.reduce((s, r) => s + r.litri, 0);
+  const lastConsumo = calcConsumo(data, data.length - 1);
+  const mediaGen    = calcMediaGenerale(data);
+  const costKm      = calcCostKm(data);
+
+  document.getElementById('stat-last-consumo').textContent = lastConsumo !== null ? lastConsumo : '—';
+  document.getElementById('stat-media').textContent        = mediaGen   !== null ? mediaGen   : '—';
+  document.getElementById('stat-cost-km').textContent      = costKm     !== null ? costKm     : '—';
+  document.getElementById('stat-tot-litri').textContent    = totLitri.toFixed(1);
+  document.getElementById('stat-tot-speso').textContent    = '€ ' + totSpeso.toFixed(2);
+  document.getElementById('stat-rifornimenti').textContent = data.length + ' rifornimenti registrati';
+
+  renderCharts(data);
+}
+
+// Calcola consumo (km percorsi / litri usati) tra record i-1 e i
+function calcConsumo(data, i) {
+  if (i <= 0 || i >= data.length) return null;
+  const kmPercorsi = data[i].km - data[i - 1].km;
+  if (kmPercorsi <= 0) return null;
+  return (kmPercorsi / data[i].litri).toFixed(2);
+}
+
+function calcMediaGenerale(data) {
+  if (data.length < 2) return null;
+  const kmTot    = data[data.length - 1].km - data[0].km;
+  const litriTot = data.slice(1).reduce((s, r) => s + r.litri, 0);
+  if (litriTot === 0 || kmTot <= 0) return null;
+  return (kmTot / litriTot).toFixed(2);
+}
+
+function calcCostKm(data) {
+  if (data.length < 2) return null;
+  const kmTot    = data[data.length - 1].km - data[0].km;
+  const spesaTot = data.slice(1).reduce((s, r) => s + r.prezzo, 0);
+  if (kmTot <= 0) return null;
+  return (spesaTot / kmTot).toFixed(3);
+}
+
+// ── CHARTS ────────────────────────────────────
+function renderCharts(data) {
+  const points = [];
+  for (let i = 1; i < data.length; i++) {
+    const c = calcConsumo(data, i);
+    if (c !== null) points.push({ label: formatData(data[i].data), consumo: parseFloat(c), prezzoL: parseFloat((data[i].prezzo / data[i].litri).toFixed(3)) });
+  }
+
+  const labels   = points.map(p => p.label);
+  const consumoV = points.map(p => p.consumo);
+  const prezzoLV = points.map(p => p.prezzoL);
+
+  // Chart 1: Consumo
+  const ctx1 = document.getElementById('chart-consumo').getContext('2d');
+  if (chartConsumo) chartConsumo.destroy();
+  chartConsumo = new Chart(ctx1, {
+    type: 'line',
+    data: {
+      labels,
+      datasets: [{
+        data: consumoV,
+        borderColor: '#f5a623',
+        backgroundColor: 'rgba(245,166,35,0.1)',
+        pointBackgroundColor: '#f5a623',
+        pointRadius: 4,
+        tension: 0.35,
+        fill: true,
+      }]
+    },
+    options: chartOptions('km/L')
+  });
+
+  // Chart 2: Prezzo/L
+  const ctx2 = document.getElementById('chart-prezzoL').getContext('2d');
+  if (chartPrezzoL) chartPrezzoL.destroy();
+  chartPrezzoL = new Chart(ctx2, {
+    type: 'line',
+    data: {
+      labels,
+      datasets: [{
+        data: prezzoLV,
+        borderColor: '#3ecf6e',
+        backgroundColor: 'rgba(62,207,110,0.1)',
+        pointBackgroundColor: '#3ecf6e',
+        pointRadius: 4,
+        tension: 0.35,
+        fill: true,
+      }]
+    },
+    options: chartOptions('€/L')
+  });
+}
+
+function chartOptions(unit) {
+  return {
+    responsive: true,
+    maintainAspectRatio: false,
+    plugins: { legend: { display: false }, tooltip: {
+      backgroundColor: '#1c1c22',
+      borderColor: '#2a2a35',
+      borderWidth: 1,
+      titleColor: '#6b6a72',
+      bodyColor: '#e8e6df',
+      titleFont: { family: 'JetBrains Mono', size: 10 },
+      bodyFont: { family: 'JetBrains Mono', size: 13 },
+      callbacks: { label: ctx => ` ${ctx.parsed.y} ${unit}` }
+    }},
+    scales: {
+      x: { grid: { color: '#2a2a35' }, ticks: { color: '#6b6a72', font: { family: 'JetBrains Mono', size: 9 }, maxRotation: 45 } },
+      y: { grid: { color: '#2a2a35' }, ticks: { color: '#6b6a72', font: { family: 'JetBrains Mono', size: 10 } }, beginAtZero: false }
+    }
+  };
+}
+
+// ── HISTORY ───────────────────────────────────
+function renderHistory() {
+  const data  = getData().slice().reverse(); // più recente prima
+  const list  = document.getElementById('history-list');
+  const empty = document.getElementById('history-empty');
+  const count = document.getElementById('history-count');
+
+  count.textContent = data.length + ' ' + (data.length === 1 ? 'voce' : 'voci');
+
+  if (data.length === 0) {
+    list.innerHTML = '';
+    empty.classList.add('show');
+    return;
+  }
+
+  empty.classList.remove('show');
+
+  const originalData = getData();
+  list.innerHTML = data.map((r, idx) => {
+    const origIdx   = originalData.findIndex(x => x.id === r.id);
+    const consumo   = calcConsumo(originalData, origIdx);
+    const prezzoL   = (r.prezzo / r.litri).toFixed(3);
+    const [year, month, day] = r.data.split('-');
+    const mesi = ['GEN','FEB','MAR','APR','MAG','GIU','LUG','AGO','SET','OTT','NOV','DIC'];
+    const mese = mesi[parseInt(month, 10) - 1] || '';
+
+    return `
+    <div class="entry-card" id="card-${r.id}">
+      <div class="entry-date-block">
+        <div class="entry-day">${day}</div>
+        <div class="entry-month">${mese} ${year.slice(2)}</div>
+      </div>
+      <div class="entry-body">
+        <div class="entry-km">📍 ${r.km.toLocaleString('it-IT')} km</div>
+        <div class="entry-meta">
+          <span class="chip">⛽ ${r.litri} L</span>
+          <span class="chip">💶 €${r.prezzo.toFixed(2)}</span>
+          <span class="chip">🔖 €${prezzoL}/L</span>
+          ${consumo !== null ? `<span class="chip highlight">🔥 ${consumo} km/L</span>` : '<span class="chip">🔥 —</span>'}
+        </div>
+      </div>
+      <div class="entry-actions">
+        <button class="btn btn-danger" onclick="openDeleteModal(${r.id})">✕</button>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+// ── DELETE ────────────────────────────────────
+function openDeleteModal(id) {
+  deleteTarget = id;
+  openModal('modal-delete');
+}
+
+function confirmDelete() {
+  if (deleteTarget === null) return;
+  const data = getData().filter(r => r.id !== deleteTarget);
+  saveData(data);
+  deleteTarget = null;
+  closeModal('modal-delete');
+  showToast('Rifornimento eliminato');
+  renderHistory();
+  renderQuickLast();
+}
+
+// ── RESET ALL ─────────────────────────────────
+function resetAll() {
+  localStorage.removeItem(LS_KEY);
+  closeModal('modal-reset');
+  renderHistory();
+  renderQuickLast();
+  renderStats();
+  showToast('Tutti i dati eliminati');
+}
+
+// ── MODALS ────────────────────────────────────
+function openModal(id)  { document.getElementById(id).classList.add('show'); }
+function closeModal(id) { document.getElementById(id).classList.remove('show'); }
+
+// Click outside modal = close
+document.querySelectorAll('.modal-overlay').forEach(overlay => {
+  overlay.addEventListener('click', e => {
+    if (e.target === overlay) overlay.classList.remove('show');
+  });
+});
+
+// ── TOAST ─────────────────────────────────────
+let toastTimer;
+function showToast(msg, isError = false) {
+  const el = document.getElementById('toast');
+  el.textContent = msg;
+  el.className   = 'toast' + (isError ? ' error-toast' : '') + ' show';
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => el.classList.remove('show'), 2800);
+}
+
+// ── UTILITIES ─────────────────────────────────
+function formatData(dateStr) {
+  if (!dateStr) return '—';
+  const [y, m, d] = dateStr.split('-');
+  return `${d}/${m}/${y}`;
+}
+
+function setTodayDate() {
+  const today = new Date();
+  const iso   = today.toISOString().split('T')[0];
+  document.getElementById('inp-data').value = iso;
+}
+
+// ── INIT ──────────────────────────────────────
+function init() {
+  setTodayDate();
+  renderQuickLast();
+}
+
+init();
+</script>
+</body>
+</html>
